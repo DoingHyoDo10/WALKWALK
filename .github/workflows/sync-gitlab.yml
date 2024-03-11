@@ -1,22 +1,41 @@
-name: Sync to GitLab
-
+# This is a workflow that syncs everthing on this repository to another repository
+ 
+name: Sync this repository to another repository
+ 
 on:
-  push: 
-    branches: ["main"]
-  pull_request:
-    branches: ["main"]
-
+  push:
+    branches:
+      - dev
+ 
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+ 
 jobs:
-  to_gitlab:
+  push-to-gitlab:
     runs-on: ubuntu-latest
-    steps: 
-      - uses: actions/checkout@v2 # checkout
+ 
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - name: Checkout Repository
+        uses: actions/checkout@v3
         with:
-          fetch-depth: 0
-      - uses: pixta-dev/repository-mirroring-action@v1 # mirroring
-        with:
-          target_repo_url: https://lab.ssafy.com/s10-blockchain-contract-sub2/S10P22D210.git
-            
-          # gitlab repo url ex) git@git.~~~~
-          ssh_private_key:
-            ${{ secrets.GITLAB_SSH_KEY }} # github에 등록한 key name
+          fetch-depth: 0 # Fetch all history for all tags and branches
+      
+      - name: Configure Git
+        run: |
+          git config --global user.name "전수민"
+          git config --global user.email "wjsaos2081@gmail.com"
+      
+      - name: push to gitlab
+        env:
+          TARGET_TOKEN: @{{ secrets.TARGET_TOKEN }}
+        run: |
+          git checkout dev
+          git pull origin dev
+          git checkout -b temp-dev
+          git filter-branch --force --prune-empty --index-filter "git rm -rf --cached --ignore-unmatch .github" HEAD
+          git remote add gitlab https://oauth2:$TARGET_TOKEN@lab.ssafy.com/s10-blockchain-contract-sub2/S10P22D210.git
+          git push gitlab temp-dev:dev --force
+          git checkout dev
+          git branch -D temp-dev
